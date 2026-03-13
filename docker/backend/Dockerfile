@@ -10,9 +10,11 @@ RUN apt-get update \
 
 WORKDIR /app
 
-ARG BACKEND_REPO=https://github.com/MichaelMGit/unipegaso_l31_be.git
+ARG BACKEND_REPO
 
 RUN git clone ${BACKEND_REPO} .
+
+COPY docker/backend/referti/ /app/uploads/referti/
 
 RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
 RUN pip install --no-cache-dir uvicorn fastapi pymysql

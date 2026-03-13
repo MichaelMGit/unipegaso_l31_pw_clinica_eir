@@ -2,8 +2,8 @@
 
 Questo workspace contiene i file necessari per avviare una stack composta da:
 
-- frontend React, clonato da `https://github.com/MichaelMGit/unipegaso_l31_fe.git`
-- backend FastAPI, clonato da `https://github.com/MichaelMGit/unipegaso_l31_be.git`
+- frontend React, clonato dal repository indicato in `FRONTEND_REPO`
+- backend FastAPI, clonato dal repository indicato in `BACKEND_REPO`
 - database MySQL 8
 
 ## File inclusi
@@ -13,7 +13,8 @@ Questo workspace contiene i file necessari per avviare una stack composta da:
 - `docker-compose.yml`: orchestra i tre servizi
 - `docker/frontend/Dockerfile`: immagine base per il frontend React
 - `docker/backend/Dockerfile`: immagine base per il backend FastAPI
-- `mysql/init/01-init.sql`: inizializzazione minima del database
+- `docker/backend/referti/`: archivio locale copiato in `uploads/referti` del backend clonato
+- `mysql/init/pw_l31_sanita.sql`: dump completo del database da importare al primo avvio
 
 ## Comportamento
 
@@ -22,14 +23,17 @@ Alla prima esecuzione:
 - l'immagine `frontend` clona automaticamente il repository FE durante la build Docker
 - il frontend esegue `npm run build` durante la build Docker e poi serve i file statici con Nginx
 - l'immagine `backend` clona automaticamente il repository BE durante la build Docker
+- dopo il clone del backend, i file presenti in `docker/backend/referti/` vengono copiati in `uploads/referti`
 - il backend installa le dipendenze in build e si avvia in modalità production senza `--reload`
-- MySQL crea il database `pw_l31_sanita`
-- i seed non vengono caricati qui: verranno creati successivamente all'avvio di FastAPI
-- l'inizializzazione dei seed e, nello specifico, dei referti di prova viene eseguita solo se il database è vuoto
+- MySQL crea database e utente applicativo tramite le variabili `MYSQL_DATABASE`, `MYSQL_USER` e `MYSQL_PASSWORD`
+- MySQL importa il dump completo `mysql/init/pw_l31_sanita.sql`
+- il backend parte solo dopo che MySQL risponde in healthcheck, quindi dopo il bootstrap iniziale del database
 
 Alle esecuzioni successive frontend e backend vengono ricostruiti solo quando rilanci la build Docker.
 
-Se devi rigenerare seed e referti di prova, è importante che il volume MySQL o il database stesso sia vuoto prima del nuovo avvio del backend.
+Importante: gli script in `mysql/init/` vengono eseguiti da MySQL solo quando il volume dati è vuoto. Se aggiorni il dump o vuoi ricaricare il database da zero, devi rimuovere il volume MySQL prima del nuovo avvio.
+
+In questo setup la cartella `mysql/init/` contiene solo il dump completo: la creazione iniziale di database e utente è demandata direttamente all'entrypoint ufficiale di MySQL tramite le variabili d'ambiente.
 
 ## Porte esposte
 
@@ -63,44 +67,77 @@ Il file `.env.example` contiene un template sicuro da versionare e usare come ba
 - `REACT_APP_API_URL=http://127.0.0.1:8001`
 - `FRONTEND_REPO=https://github.com/MichaelMGit/unipegaso_l31_fe.git`
 
-## Avvio
+## Comandi Docker Compose
 
-Da questo workspace esegui:
+Se vuoi cambiare credenziali, secret o porte, modifica prima il file `.env`.
+
+Se devi ricreare il file locale da zero, copia `.env.example` in `.env` e poi personalizza i valori.
+
+### Avvio in foreground
 
 ```powershell
 docker compose up --build
 ```
 
-Per rifare la build senza cache e poi avviare i container:
+### Avvio in background (detached)
+
+```powershell
+docker compose up --build -d
+```
+
+### Vedere lo stato dei container
+
+```powershell
+docker compose ps
+```
+
+### Vedere i log
+
+Tutti i servizi:
+
+```powershell
+docker compose logs -f
+```
+
+Solo backend:
+
+```powershell
+docker compose logs -f backend
+```
+
+Solo MySQL:
+
+```powershell
+docker compose logs -f mysql
+```
+
+### Fermare la stack
+
+```powershell
+docker compose down
+```
+
+### Fermare la stack e rimuovere i volumi
+
+```powershell
+docker compose down -v
+```
+
+Usa questo comando quando vuoi forzare una nuova importazione del dump `mysql/init/pw_l31_sanita.sql` al successivo avvio.
+
+### Ricostruire senza cache
 
 ```powershell
 docker compose build --no-cache
 docker compose up -d
 ```
 
-Se vuoi cambiare credenziali, secret o porte, modifica prima il file `.env`.
-
-Se devi ricreare il file locale da zero, copia `.env.example` in `.env` e poi personalizza i valori.
-
-Per avviare in background:
-
-```powershell
-docker compose up --build -d
-```
-
-Per fermare tutto:
-
-```powershell
-docker compose down
-```
-
-Per fermare tutto rimuovendo anche i volumi:
+### Ripartenza pulita completa
 
 ```powershell
 docker compose down -v
+docker compose up --build
 ```
-
-Questo comando è utile anche quando vuoi ripartire da un database completamente pulito e forzare la rigenerazione dei seed e dei referti di prova al successivo avvio.
 
 ## Note importanti
 
@@ -133,6 +170,8 @@ Il container prova questi entrypoint, in quest'ordine:
 2. `app/main.py` come `app.main:app`
 
 Se il repository backend usa una struttura diversa, bisognerà aggiornare il comando del servizio `backend` in `docker-compose.yml`.
+
+Con il setup attuale non c'è più bisogno che il backend esegua seed iniziali del database: i dati arrivano direttamente dal dump MySQL importato in fase di bootstrap.
 
 Il bootstrap del backend gira in shell Linux del container, non dipende dalla shell Windows del tuo host.
 
