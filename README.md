@@ -1,194 +1,165 @@
-# Stack Docker: React + FastAPI + MySQL
+# Project Work UniPegaso L31 - Tema n. 1, Traccia 16
 
-Questo workspace contiene i file necessari per avviare una stack composta da:
+Questo repository raccoglie l'infrastruttura necessaria all'esecuzione del project work del corso di laurea **UniPegaso L31**, sviluppato nell'ambito del:
 
-- frontend React, clonato dal repository indicato in `FRONTEND_REPO`
-- backend FastAPI, clonato dal repository indicato in `BACKEND_REPO`
-- database MySQL 8
+- **Tema n. 1:** La digitalizzazione dell’impresa
+- **Traccia 16:** Sviluppo di una applicazione full-stack API-based per un’organizzazione del settore sanitario
 
-## File inclusi
+La finalità del progetto è predisporre un ambiente di avvio semplice, riproducibile e coerente con l'architettura dell'applicazione, così da consentire l'esecuzione coordinata dei componenti frontend, backend e database mediante container Docker.
 
-- `.env`: variabili centralizzate per database e applicazioni
-- `.env.example`: template versionabile senza segreti reali
-- `docker-compose.yml`: orchestra i tre servizi
-- `docker/frontend/Dockerfile`: immagine base per il frontend React
-- `docker/backend/Dockerfile`: immagine base per il backend FastAPI
-- `docker/backend/referti/`: archivio locale copiato in `uploads/referti` del backend clonato
-- `mysql/init/pw_l31_sanita.sql`: dump completo del database da importare al primo avvio
+## Finalità del repository
 
-## Comportamento
+Questo repository non contiene direttamente l'intero codice applicativo del frontend e del backend, ma fornisce l'ambiente di orchestrazione necessario per:
 
-Alla prima esecuzione:
+- clonare i repository applicativi;
+- configurare ed eseguire i container della soluzione;
+- inizializzare il database MySQL a partire da un dump completo;
+- caricare i referti di esempio nel backend;
+- avviare l'intera architettura full-stack in modo coordinato.
 
-- l'immagine `frontend` clona automaticamente il repository FE durante la build Docker
-- il frontend esegue `npm run build` durante la build Docker e poi serve i file statici con Nginx
-- l'immagine `backend` clona automaticamente il repository BE durante la build Docker
-- dopo il clone del backend, i file presenti in `docker/backend/referti/` vengono copiati in `uploads/referti`
-- il backend installa le dipendenze in build e si avvia in modalità production senza `--reload`
-- MySQL crea database e utente applicativo tramite le variabili `MYSQL_DATABASE`, `MYSQL_USER` e `MYSQL_PASSWORD`
-- MySQL importa il dump completo `mysql/init/pw_l31_sanita.sql`
-- il backend parte solo dopo che MySQL risponde in healthcheck, quindi dopo il bootstrap iniziale del database
+## Architettura della soluzione
 
-Alle esecuzioni successive frontend e backend vengono ricostruiti solo quando rilanci la build Docker.
+La stack è composta dai seguenti elementi:
 
-Importante: gli script in `mysql/init/` vengono eseguiti da MySQL solo quando il volume dati è vuoto. Se aggiorni il dump o vuoi ricaricare il database da zero, devi rimuovere il volume MySQL prima del nuovo avvio.
+- **frontend React**, clonato dal repository indicato nella variabile `FRONTEND_REPO`;
+- **backend FastAPI**, clonato dal repository indicato nella variabile `BACKEND_REPO`;
+- **database MySQL 8**, inizializzato automaticamente tramite dump.
 
-In questo setup la cartella `mysql/init/` contiene solo il dump completo: la creazione iniziale di database e utente è demandata direttamente all'entrypoint ufficiale di MySQL tramite le variabili d'ambiente.
+Il repository include inoltre:
 
-## Porte esposte
+- `docker-compose.yml`, per l'orchestrazione dei servizi;
+- `docker/frontend/Dockerfile`, per la build del frontend;
+- `docker/backend/Dockerfile`, per la build del backend;
+- `docker/backend/referti/`, contenente i file da copiare nella cartella `uploads/referti` del backend clonato;
+- `mysql/init/pw_l31_sanita.sql`, contenente il backup completo del database;
+- `.env`, già predisposto con le variabili necessarie all'avvio della stack;
+- `.env.example`, mantenuto come template di riferimento.
 
-- Frontend production: `http://localhost:3000`
-- FastAPI: `http://localhost:8001`
-- MySQL: `localhost:3306`
-- Swagger UI FastAPI: `http://localhost:8001/docs`
+## Configurazione iniziale
 
-## Credenziali database di default
+Nel repository è già presente un file `.env` pronto all'uso. Per il primo avvio, pertanto, **non è necessario creare manualmente alcun file di configurazione**.
 
-- database: `pw_l31_sanita`
-- utente: `pw_l31`
-- password: `jehJnez6.D4R(s!A`
-- root password: `root`
+All'interno del file sono già definiti:
 
-## Variabili d'ambiente applicative
+- le credenziali di accesso a MySQL;
+- gli URL dei repository backend e frontend;
+- la variabile `DATABASE_URL` utilizzata dal backend FastAPI;
+- le porte esposte dai servizi;
+- le principali variabili applicative richieste dall'ambiente Docker.
 
-Le variabili sono centralizzate nel file `.env`, già pronto in root progetto.
+Qualora si renda necessario personalizzare credenziali, porte o repository sorgente, è sufficiente modificare direttamente il file `.env` prima dell'avvio della stack.
 
-Il file `.env.example` contiene un template sicuro da versionare e usare come base per nuovi ambienti.
+## Bootstrap dell'applicazione
 
-### Backend FastAPI
+Al primo avvio dell'ambiente Docker, il processo di bootstrap avviene nel modo seguente:
 
-- `DATABASE_URL=mysql+pymysql://pw_l31:jehJnez6.D4R(s!A@mysql:3306/pw_l31_sanita`
-- `JWT_SECRET=change-me-jwt-secret`
-- `CORS_ORIGINS=http://localhost:3000`
-- `BACKEND_REPO=https://github.com/MichaelMGit/unipegaso_l31_be.git`
+1. MySQL crea il database e l'utente applicativo utilizzando le variabili `MYSQL_DATABASE`, `MYSQL_USER` e `MYSQL_PASSWORD`;
+2. MySQL importa automaticamente il dump contenuto in `mysql/init/pw_l31_sanita.sql`;
+3. il backend viene clonato dal repository definito in `BACKEND_REPO`;
+4. i file presenti nella cartella `docker/backend/referti/` vengono copiati nella directory `uploads/referti` del backend;
+5. il backend viene avviato soltanto dopo che il database risulta disponibile;
+6. il frontend viene clonato, compilato e pubblicato tramite Nginx.
 
-### Frontend React
+## Avvio della stack
 
-- `REACT_APP_API_URL=http://127.0.0.1:8001`
-- `FRONTEND_REPO=https://github.com/MichaelMGit/unipegaso_l31_fe.git`
-
-## Comandi Docker Compose
-
-Se vuoi cambiare credenziali, secret o porte, modifica prima il file `.env`.
-
-Se devi ricreare il file locale da zero, copia `.env.example` in `.env` e poi personalizza i valori.
-
-### Avvio in foreground
+Dalla root del progetto è possibile avviare l'ambiente con il comando:
 
 ```powershell
 docker compose up --build
 ```
 
-### Avvio in background (detached)
+Per l'avvio in background:
 
 ```powershell
 docker compose up --build -d
 ```
 
-### Vedere lo stato dei container
+## Monitoraggio dei servizi
+
+Per verificare lo stato dei container:
 
 ```powershell
 docker compose ps
 ```
 
-### Vedere i log
-
-Tutti i servizi:
+Per visualizzare i log di tutti i servizi:
 
 ```powershell
 docker compose logs -f
 ```
 
-Solo backend:
+Per visualizzare i log del solo backend:
 
 ```powershell
 docker compose logs -f backend
 ```
 
-Solo MySQL:
+Per visualizzare i log del solo database MySQL:
 
 ```powershell
 docker compose logs -f mysql
 ```
 
-### Fermare la stack
+## Arresto e ripristino dell'ambiente
+
+Per arrestare la stack:
 
 ```powershell
 docker compose down
 ```
 
-### Fermare la stack e rimuovere i volumi
+Per arrestarla rimuovendo anche i volumi Docker:
 
 ```powershell
 docker compose down -v
 ```
 
-Usa questo comando quando vuoi forzare una nuova importazione del dump `mysql/init/pw_l31_sanita.sql` al successivo avvio.
+Quest'ultima opzione è utile quando si desidera forzare una nuova importazione del dump MySQL al successivo avvio.
 
-### Ricostruire senza cache
+Per una ripartenza completa da zero:
+
+```powershell
+docker compose down -v
+docker compose up --build
+```
+
+Per ricostruire le immagini senza utilizzare la cache:
 
 ```powershell
 docker compose build --no-cache
 docker compose up -d
 ```
 
-### Ripartenza pulita completa
+## Porte esposte
 
-```powershell
-docker compose down -v
-docker compose up --build
-```
+- Frontend: `http://localhost:3000`
+- Backend FastAPI: `http://localhost:8001`
+- Documentazione Swagger: `http://localhost:8001/docs`
+- MySQL: `localhost:3306`
 
-## Note importanti
+## Credenziali demo
 
-### Frontend React
+Per agevolare le attività di prova e validazione funzionale dell'applicazione, il database inizializzato tramite dump mette a disposizione i seguenti account demo:
 
-Il frontend è configurato in modalità production:
+- `mario.rossi@clinicaeir.it` / `medico123`
+- `laura.bianchi@clinicaeir.it` / `medico123`
+- `giovanni.verdi@example.com` / `paziente123`
+- `segreteria@clinicaeir.it` / `segreteria123`
+- `admin@clinicaeir.it` / `admin123`
 
-- clona il repository durante la build immagine
-- installa le dipendenze
-- esegue `npm run build`
-- serve l'output statico tramite Nginx
+## Considerazioni operative
 
-Nginx usa una configurazione custom con fallback SPA verso `index.html`, così rotte frontend come `/login` funzionano correttamente anche con refresh diretto del browser.
+- Il file `.env` è già fornito e pronto all'uso;
+- il dump MySQL viene importato solamente quando il volume dati risulta vuoto;
+- i repository del frontend e del backend vengono determinati tramite variabili d'ambiente;
+- i referti presenti in `docker/backend/referti/` vengono copiati nel backend durante la build dell'immagine;
+- il backend non richiede più un seed iniziale applicativo, poiché i dati vengono caricati dal dump del database.
 
-Questa configurazione presuppone che il progetto generi la cartella `build/`, tipica di Create React App.
+## Repository applicativi di supporto
 
-Se il repository usa Vite o genera `dist/`, andrà adattato `docker/frontend/Dockerfile` nel `COPY --from=builder` finale.
+I repository sorgente utilizzati dall'ambiente sono configurati tramite le seguenti variabili:
 
-### Backend FastAPI
+- `BACKEND_REPO`
+- `FRONTEND_REPO`
 
-Il backend è configurato in modalità production:
-
-- clona il repository durante la build immagine
-- installa le dipendenze Python durante la build
-- avvia Uvicorn senza `--reload`
-
-Il container prova questi entrypoint, in quest'ordine:
-
-1. `main.py` come `main:app`
-2. `app/main.py` come `app.main:app`
-
-Se il repository backend usa una struttura diversa, bisognerà aggiornare il comando del servizio `backend` in `docker-compose.yml`.
-
-Con il setup attuale non c'è più bisogno che il backend esegua seed iniziali del database: i dati arrivano direttamente dal dump MySQL importato in fase di bootstrap.
-
-Il bootstrap del backend gira in shell Linux del container, non dipende dalla shell Windows del tuo host.
-
-FastAPI e React sono collegati sulla stessa rete Docker insieme a MySQL, quindi possono comunicare direttamente usando i nomi dei container (`clinica_mysql`, `clinica_backend`, `clinica_frontend`).
-
-Nel setup attuale, però, il browser chiama il backend tramite `http://127.0.0.1:8001`, come definito in `REACT_APP_API_URL`.
-
-### Dipendenze backend
-
-L'immagine installa automaticamente `requirements.txt` se presente. Se il progetto usa `pyproject.toml`, Poetry o un'altra struttura, conviene adattare il Dockerfile del backend.
-
-## Possibili miglioramenti
-
-Se vuoi, nel prossimo passo posso anche prepararti:
-
-- un file `.env` per centralizzare le variabili
-- profili `dev`/`prod`
-- un reverse proxy Nginx
-- healthcheck applicativi per frontend e backend
-- mount locali dei sorgenti invece del clone dentro i container
+I relativi valori di default sono già presenti nel file `.env` incluso nel progetto.
